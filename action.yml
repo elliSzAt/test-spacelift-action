@@ -44,5 +44,8 @@ runs:
         with open(os.path.join(dist, "metadata.json"), "w", encoding="utf-8") as f:
             json.dump({"version": "0.0.1"}, f)
             f.write("\n")
+
+        with open(os.path.join(dist, "signature.sig"), "w", encoding="utf-8") as f:
+            f.write("dummy signature\n")
         PY
         echo "F09_ACTION_MARKER=overwrote dist/artifacts.json"
